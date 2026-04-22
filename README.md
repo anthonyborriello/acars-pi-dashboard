@@ -220,7 +220,7 @@ Add these two lines at the bottom:
 
 ```
 @reboot sleep 60 && /usr/bin/python3 -u /home/pi/acars-pi-dashboard/acars_logger.py >> /home/pi/acars_logs/logger.log 2>&1 
-@reboot sleep 70 && /usr/bin/python3 -u/home/pi/acars-pi-dashboard/acars_ui.py >> /dev/null 2>&1
+@reboot sleep 70 && /usr/bin/python3 /home/pi/acars-pi-dashboard/acars_ui.py >> /dev/null 2>&1
 ```
 
 The `>> ... 2>&1` redirects stdout and stderr to a log file — useful for debugging.
