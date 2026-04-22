@@ -78,7 +78,7 @@ def main():
     print(f"[{now} UTC] Logger started — saving to acars_{current_day}.db")
 
     proc = subprocess.Popen(
-        [ACARSDEC, "-o", "4", "-r", "0"] + FREQ,
+        [ACARSDEC, "--output", "json:file", "--rtlsdr", "0"] + FREQ,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
