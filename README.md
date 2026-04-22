@@ -85,7 +85,7 @@ cd ../..
 
 ### acarsdec (f00b4r0 fork — recommended)
 
-This project uses the actively maintained fork by [f00b4r0](https://github.com/f00b4r0/acarsdec), which features automatic library autodetection, optimized Raspberry Pi builds, and is actively maintained as of 2025.
+This project uses the actively maintained fork by [f00b4r0](https://github.com/f00b4r0/acarsdec), which features automatic library autodetection, optimized Raspberry Pi builds, and is actively maintained.
 
 First install the required dependencies:
 
