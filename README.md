@@ -210,7 +210,15 @@ sudo systemctl status acars-ui
 
 ## Alternative: start on boot with crontab
 
-If you prefer a simpler approach over systemd, you can use `crontab -e`:
+If you prefer a simpler approach over systemd, you can use `crontab -e`.
+
+First, make sure the log directory exists. While you are in your home directory, run:
+
+```bash
+mkdir -p /home/pi/acars_logs
+```
+
+Then open the crontab editor:
 
 ```bash
 crontab -e
@@ -224,11 +232,6 @@ Add these two lines at the bottom:
 ```
 
 The `>> ... 2>&1` redirects stdout and stderr to a log file — useful for debugging.
-
-> **Note:** Make sure the log directory exists before rebooting:
-> ```bash
-> mkdir -p /home/pi/acars_logs
-> ```
 
 ---
 
