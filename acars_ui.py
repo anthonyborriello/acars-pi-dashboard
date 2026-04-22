@@ -136,6 +136,10 @@ tr.sq.sq-show        { display:table-row; }
     </form>
     <a href="/raw?day={{ current }}" class="btn">📄 Raw Data</a>
     <button id="snd-btn" onclick="toggleSound()" style="border-color:#555;color:#555;">🔔 Sound</button>
+    <a href="https://github.com/anthonyborriello/acars-pi-dashboard"
+       class="btn"
+       target="_blank"
+       rel="noopener noreferrer">GitHub ↗</a>
 </div>
 
 <div class="sq-bar">
