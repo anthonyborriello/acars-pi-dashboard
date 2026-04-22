@@ -28,7 +28,6 @@ Tested on **Raspberry Pi 2B** with **Debian Trixie**, but runs on any modern Lin
 <img width="1920" height="1080" alt="web page" src="https://github.com/user-attachments/assets/f59282ed-9dc9-4e21-95d3-60931e6ee94a" />
 <br><br>
 <img width="1920" height="1080" alt="web page 2" src="https://github.com/user-attachments/assets/e1cb0520-524b-4e8d-a567-1a57a32bd95b" />
-<br><br>
 
 ---
 
