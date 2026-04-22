@@ -87,7 +87,7 @@ cd ../..
 
 This project uses the actively maintained fork by [f00b4r0](https://github.com/f00b4r0/acarsdec), which features automatic library autodetection, optimized Raspberry Pi builds, and is actively maintained.
 
-Install the required dependencies, clone and build:
+Install the required dependencies, clone and build: (Use the cmake flag that matches your Raspberry Pi model)
 
 ```bash
 sudo apt install librtlsdr-dev libcjson-dev
@@ -97,14 +97,12 @@ cmake .. -DCMAKE_C_FLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4"
 make && sudo make install
 ```
 
-> Use the cmake flag that matches your Raspberry Pi model:
->
-> | Model | Flag |
-> |-------|------|
-> | Pi 2B | `-DCMAKE_C_FLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4"` |
-> | Pi 3B | `-DCMAKE_C_FLAGS="-mcpu=cortex-a53 -mfpu=neon-fp-armv8"` |
-> | Pi 4B | `-DCMAKE_C_FLAGS="-mcpu=cortex-a72 -mfpu=neon-fp-armv8"` |
-> | Other Linux | `-DCMAKE_C_FLAGS="-march=native"` |
+| Model | Flag |
+|-------|------|
+| Pi 2B | `-DCMAKE_C_FLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4"` |
+| Pi 3B | `-DCMAKE_C_FLAGS="-mcpu=cortex-a53 -mfpu=neon-fp-armv8"` |
+| Pi 4B | `-DCMAKE_C_FLAGS="-mcpu=cortex-a72 -mfpu=neon-fp-armv8"` |
+| Other Linux | `-DCMAKE_C_FLAGS="-march=native"` |
 
 Verify the installation:
 
