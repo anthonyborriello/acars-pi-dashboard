@@ -256,7 +256,7 @@ The `>> ... 2>&1` redirects stdout and stderr to a log file — useful for debug
 | ⬜ White | Complete assembled message |
 | 🟥 Red | Message with decode error |
 | ⬛ Dim green | SQ squitter (hidden by default) |
-| ▪ Grey | Other / partial message |
+| ▪ Grey | General message |
 
 ---
 
