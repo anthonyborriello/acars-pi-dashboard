@@ -96,7 +96,7 @@ make && sudo make install
 ```bash
 git clone https://github.com/anthonyborriello/acars-pi-dashboard.git
 cd acars-pi-dashboard
-pip3 install flask
+sudo apt install python3-flask
 ```
 
 ---
