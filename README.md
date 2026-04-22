@@ -71,7 +71,7 @@ Any RTL-SDR compatible dongle will work. For best results use a VHF antenna tune
 sudo apt install python3-flask
 ```
 
-### libacars (optional but strongly recommended)
+### libacars 
 
 libacars enables full ADS-C and CPDLC decoding. Install it **before** compiling acarsdec.
 
@@ -83,7 +83,7 @@ cmake .. && make && sudo make install && sudo ldconfig
 cd ../..
 ```
 
-### acarsdec (f00b4r0 fork — recommended)
+### acarsdec (f00b4r0 fork)
 
 This project uses the actively maintained fork by [f00b4r0](https://github.com/f00b4r0/acarsdec), which features automatic library autodetection, optimized Raspberry Pi builds, and is actively maintained.
 
