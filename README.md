@@ -12,23 +12,23 @@
 
 ## What is this?
 
-**acars-pi-dashboard** is a minimal, self-contained ACARS logging and live web dashboard system built around [acarsdec](https://github.com/TLeconte/acarsdec).
+**acars-pi-dashboard** is a minimal, self-contained ACARS logging and live web dashboard system built around [acarsdec](https://github.com/f00b4r0/acarsdec).
 
 No Docker. No Node.js. No message brokers. No configuration files. Just two Python scripts and a browser.
 
 - `acars_logger.py` — captures JSON output from `acarsdec` and stores every message in a per-day SQLite database with WAL mode for safe concurrent access
 - `acars_ui.py` — serves a real-time web dashboard via Flask, polling for new messages every 5 seconds with zero page reloads
 
-Tested on **Raspberry Pi** with **Debian Trixie**, but runs on any modern Linux system.
+Tested on **Raspberry Pi 2B** with **Debian Trixie**, but runs on any modern Linux system.
 
 ---
 
-## Screenshot
+## Screenshots
 
 <img width="1920" height="1080" alt="web page" src="https://github.com/user-attachments/assets/f59282ed-9dc9-4e21-95d3-60931e6ee94a" />
-<br>
+<br><br>
 <img width="1920" height="1080" alt="web page 2" src="https://github.com/user-attachments/assets/e1cb0520-524b-4e8d-a567-1a57a32bd95b" />
-<br>
+<br><br>
 <img width="1860" height="1047" alt="raw" src="https://github.com/user-attachments/assets/1f26f7e0-cbd5-418c-88f1-98e3c2724046" />
 
 ---
@@ -42,7 +42,7 @@ Tested on **Raspberry Pi** with **Debian Trixie**, but runs on any modern Linux 
 - **Filtering** — filter by tail number, flight number, label type, and message status
 - **SQ squitter toggle** — show/hide squitter messages on demand
 - **Audio alerts** — optional sound notifications for new messages and squitter (Web Audio API, no dependencies)
-- **Raw data endpoint** — `/raw` JSON endpoint for last 1000 messages per day
+- **Raw data endpoint** — `/raw` JSON endpoint for last 1000 messages per day (configurable up to 5000)
 - **Connection lost indicator** — blinking red alert if the server becomes unreachable, auto-recovers
 - **WAL mode SQLite** — logger writes and UI reads simultaneously with zero locking conflicts
 - **Systemd ready** — designed to run as background services on boot
@@ -55,7 +55,7 @@ Tested with:
 
 | Component | Model |
 |-----------|-------|
-| SBC | Raspberry Pi (any model) |
+| SBC | Raspberry Pi 2B |
 | SDR Dongle | NooElec NESDR (RTL2832U) |
 | Antenna | Diamond SRH789 |
 
@@ -71,22 +71,51 @@ Any RTL-SDR compatible dongle will work. For best results use a VHF antenna tune
 sudo apt install python3-flask
 ```
 
-### acarsdec
+### libacars (optional but strongly recommended)
 
-You need [acarsdec](https://github.com/TLeconte/acarsdec) compiled and installed. For ADS-C / CPDLC decoding, also install [libacars](https://github.com/szpajder/libacars) **before** compiling acarsdec.
+libacars enables full ADS-C and CPDLC decoding. Install it **before** compiling acarsdec.
 
 ```bash
-# libacars (optional but recommended)
+sudo apt install cmake build-essential pkg-config
 git clone https://github.com/szpajder/libacars.git
 cd libacars && mkdir build && cd build
 cmake .. && make && sudo make install && sudo ldconfig
 cd ../..
+```
 
-# acarsdec
-git clone https://github.com/TLeconte/acarsdec.git
+### acarsdec (f00b4r0 fork — recommended)
+
+This project uses the actively maintained fork by [f00b4r0](https://github.com/f00b4r0/acarsdec), which features automatic library autodetection, optimized Raspberry Pi builds, and is actively maintained as of 2025.
+
+First install the required dependencies:
+
+```bash
+sudo apt install librtlsdr-dev libcjson-dev
+```
+
+Then install the required dependencies and clone and build:
+
+```bash
+sudo apt install librtlsdr-dev libcjson-dev
+git clone https://github.com/f00b4r0/acarsdec.git
 cd acarsdec && mkdir build && cd build
-cmake .. -Drtl=ON
+cmake .. -DCMAKE_C_FLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4"
 make && sudo make install
+```
+
+> Use the cmake flag that matches your Raspberry Pi model:
+>
+> | Model | Flag |
+> |-------|------|
+> | Pi 2B | `-DCMAKE_C_FLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4"` |
+> | Pi 3B | `-DCMAKE_C_FLAGS="-mcpu=cortex-a53 -mfpu=neon-fp-armv8"` |
+> | Pi 4B | `-DCMAKE_C_FLAGS="-mcpu=cortex-a72 -mfpu=neon-fp-armv8"` |
+> | Other Linux | `-DCMAKE_C_FLAGS="-march=native"` |
+
+Verify the installation:
+
+```bash
+acarsdec --help
 ```
 
 ---
@@ -227,11 +256,11 @@ crontab -e
 Add these two lines at the bottom:
 
 ```
-@reboot sleep 60 && /usr/bin/python3 -u /home/pi/acars-pi-dashboard/acars_logger.py >> /home/pi/acars_logs/logger.log 2>&1 
+@reboot sleep 60 && /usr/bin/python3 -u /home/pi/acars-pi-dashboard/acars_logger.py >> /home/pi/acars_logs/logger.log 2>&1
 @reboot sleep 70 && /usr/bin/python3 /home/pi/acars-pi-dashboard/acars_ui.py >> /dev/null 2>&1
 ```
 
-The `>> ... 2>&1` redirects stdout and stderr to a log file — useful for debugging.
+The `sleep 60/70` gives the system time to fully initialize before starting (network, USB dongle, etc.). The `-u` flag on the logger disables Python output buffering so log entries appear immediately. The `>> ... 2>&1` redirects stdout and stderr to a log file — useful for debugging.
 
 ---
 
@@ -328,7 +357,7 @@ Key decisions:
 
 | System | Status |
 |--------|--------|
-| Raspberry Pi + Debian Trixie | ✅ Tested |
+| Raspberry Pi 2B + Debian Trixie | ✅ Tested |
 | Raspberry Pi OS (Bookworm) | ✅ Expected to work |
 | Ubuntu 22.04 / 24.04 | ✅ Expected to work |
 | Any modern Linux + Python 3.8+ | ✅ Should work |
@@ -350,6 +379,9 @@ WAL mode already helps by batching writes. For even better SD card protection, c
 **Viewing old data:**
 Use the day dropdown in the top-left of the dashboard to browse historical databases. The UI is read-only for past days — live polling only activates for today's date.
 
+**Multiple instances:**
+Only one instance of `acars_logger.py` can run at a time — acarsdec will fail to open the dongle if another instance is already using it. If the logger exits immediately, check for stale processes with `ps aux | grep acarsdec`.
+
 ---
 
 ## Contributing
@@ -360,7 +392,8 @@ Pull requests are welcome. If you test on a new platform or hardware combination
 
 ## Credits
 
-- [acarsdec](https://github.com/TLeconte/acarsdec) by Thierry Leconte — the ACARS decoder engine that makes all of this possible
+- [acarsdec](https://github.com/f00b4r0/acarsdec) fork by Thibaut Varène (f00b4r0) — actively maintained decoder, recommended
+- [acarsdec](https://github.com/TLeconte/acarsdec) original by Thierry Leconte — the decoder that started it all
 - [libacars](https://github.com/szpajder/libacars) by Tomasz Duda — ADS-C / CPDLC decoding library
 - [airframes.io](https://app.airframes.io) — community ACARS message reference
 
