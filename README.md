@@ -87,13 +87,7 @@ cd ../..
 
 This project uses the actively maintained fork by [f00b4r0](https://github.com/f00b4r0/acarsdec), which features automatic library autodetection, optimized Raspberry Pi builds, and is actively maintained.
 
-First install the required dependencies:
-
-```bash
-sudo apt install librtlsdr-dev libcjson-dev
-```
-
-Then install the required dependencies and clone and build:
+Install the required dependencies, clone and build:
 
 ```bash
 sudo apt install librtlsdr-dev libcjson-dev
