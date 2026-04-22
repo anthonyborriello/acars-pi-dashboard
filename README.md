@@ -26,9 +26,9 @@ Tested on **Raspberry Pi** with **Debian Trixie**, but runs on any modern Linux 
 ## Screenshot
 
 <img width="1920" height="1080" alt="web page" src="https://github.com/user-attachments/assets/d38d05ec-e8bc-4551-a374-f5a8b051cf0d" />
-
+<br><br>
 <img width="1920" height="1080" alt="web page 2" src="https://github.com/user-attachments/assets/fbf85996-4873-4736-a7f4-0e191a7a636a" />
-
+<br><br>
 <img width="1860" height="1047" alt="raw" src="https://github.com/user-attachments/assets/1ca72098-c618-457a-91f3-f4ae84512cbe" />
 
 ---
