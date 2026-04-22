@@ -145,7 +145,7 @@ http://<your-pi-ip>:5000
 
 ---
 
-## Running as systemd services (recommended)
+## Running as systemd services
 
 Create the logger service:
 
