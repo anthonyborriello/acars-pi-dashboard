@@ -25,11 +25,7 @@ Tested on **Raspberry Pi** with **Debian Trixie**, but runs on any modern Linux 
 
 ## Screenshot
 
-<img width="1920" height="1080" alt="web page" src="https://github.com/user-attachments/assets/d38d05ec-e8bc-4551-a374-f5a8b051cf0d" />
-<br><br>
-<img width="1920" height="1080" alt="web page 2" src="https://github.com/user-attachments/assets/fbf85996-4873-4736-a7f4-0e191a7a636a" />
-<br><br>
-<img width="1860" height="1047" alt="raw" src="https://github.com/user-attachments/assets/1ca72098-c618-457a-91f3-f4ae84512cbe" />
+> *(add your screenshot here)*
 
 ---
 
@@ -68,7 +64,7 @@ Any RTL-SDR compatible dongle will work. For best results use a VHF antenna tune
 ### System dependencies
 
 ```bash
-auso apt install python3-flask
+sudo apt install python3-flask
 ```
 
 ### acarsdec
@@ -96,7 +92,7 @@ make && sudo make install
 ```bash
 git clone https://github.com/anthonyborriello/acars-pi-dashboard.git
 cd acars-pi-dashboard
-sudo apt install python3-flask
+pip3 install flask
 ```
 
 ---
@@ -219,11 +215,11 @@ crontab -e
 Add these two lines at the bottom:
 
 ```
-@reboot sleep 60 /usr/bin/python3 -u /home/pi/acars-pi-dashboard/acars_logger.py >> /home/pi/acars_logs/logger.log 2>&1 
-@reboot sleep 70 && /usr/bin/python3 /home/pi/acars_web_sql.py >> /dev/null 2>&1
+@reboot sleep 60 && /usr/bin/python3 -u /home/pi/acars-pi-dashboard/acars_logger.py >> /home/pi/acars_logs/logger.log 2>&1 
+@reboot sleep 70 && /usr/bin/python3 -u/home/pi/acars-pi-dashboard/acars_ui.py >> /dev/null 2>&1
 ```
 
-The `>> ... 2>&1` redirects stdout and stderr to a log file — useful for debugging. 
+The `>> ... 2>&1` redirects stdout and stderr to a log file — useful for debugging.
 
 > **Note:** Make sure the log directory exists before rebooting:
 > ```bash
