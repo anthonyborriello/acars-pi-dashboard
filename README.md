@@ -403,6 +403,3 @@ Pull requests are welcome. If you test on a new platform or hardware combination
 
 MIT License — free to use, modify, and distribute.
 
----
-
-*Built with ❤ for the RTL-SDR and aviation enthusiast community.*
