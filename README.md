@@ -26,7 +26,7 @@ Tested on **Raspberry Pi 2B** with **Debian Trixie**, but runs on any modern Lin
 
 ## Screenshots
 
-<img width="1920" height="1080" alt="web_ui2" src="https://github.com/user-attachments/assets/f5851eed-87e6-4aa7-a917-5f59b14fd83b" />
+<img width="1920" height="1080" alt="1" src="https://github.com/user-attachments/assets/36201ec1-8d7f-4c52-9668-af373c847f79" />
 <br><br>
 <img width="1920" height="1080" alt="extra_sata" src="https://github.com/user-attachments/assets/f4227e9b-a397-40e3-a338-8044634c881c" />
 
