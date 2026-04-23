@@ -36,7 +36,7 @@ Tested on **Raspberry Pi 2B** with **Debian Trixie**, but runs on any modern Lin
 
 - **Live dashboard** — new messages appear automatically every 5 seconds, no refresh needed
 - **Color-coded rows** — ADS-C telemetry in blue, complete messages in white, errors in red, SQ squitter dimmed
-- **Expandable detail panel** — click any row to reveal full decoded data: signal level, noise floor, libacars output, and all raw fields not shown in the main table
+- **Expandable detail panel** — click any row to reveal full decoded data: signal level, noise floor, and all raw fields not shown in the main table
 - **ADS-C telemetry extraction** — latitude, longitude, altitude, ground speed, track, vertical speed decoded from ARINC-622 / libacars data
 - **Per-day SQLite databases** — automatic UTC midnight rotation, historical day browsing via dropdown
 - **Filtering** — filter by tail number, flight number, label type, and message status
