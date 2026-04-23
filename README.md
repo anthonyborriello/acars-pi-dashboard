@@ -126,7 +126,7 @@ sudo apt install python3-flask
 
 ## Configuration
 
-Edit the top of each file to match your setup:
+If you want, you can edit the top of each file to match your setup:
 
 ### `acars_logger.py`
 
