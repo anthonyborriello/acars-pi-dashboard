@@ -64,6 +64,7 @@ h2   { color:var(--fg); font-size:16px; letter-spacing:2px; margin-bottom:10px; 
 .sq-bar button {
     background:#0a1a0a; color:#3aaa5a; border:1px solid #1a4a2a;
     padding:2px 8px; font-family:monospace; font-size:11px; cursor:pointer;
+    min-width:60px; text-align:center;
 }
 .sq-bar button:hover { background:#112211; }
 
@@ -97,6 +98,34 @@ tr.sq.sq-show        { display:table-row; }
     margin-left:4px; vertical-align:middle;
     background:#1a2a1a; border:1px solid #336633; color:#88cc88;
 }
+
+/* expandable detail row */
+tr.detail-row      { display:none; }
+tr.detail-row.open { display:table-row; }
+tr.detail-row td   {
+    background:#050f08; border-bottom:1px solid #1a2a1a;
+    padding:8px 16px; font-size:11px;
+}
+tr.has-detail      { cursor:pointer; }
+tr.has-detail td:first-child::before {
+    content:"▶ "; color:#2a4a3a; font-size:10px;
+}
+tr.has-detail.expanded td:first-child::before {
+    content:"▼ "; color:#00ff99;
+}
+.detail-grid {
+    display:grid;
+    grid-template-columns: max-content 1fr;
+    gap:3px 20px;
+}
+.detail-section {
+    grid-column: 1 / -1;
+    color:#00ff99; font-size:10px; letter-spacing:1px;
+    margin-top:8px; margin-bottom:3px;
+    border-bottom:1px solid #1a2a1a; padding-bottom:2px;
+}
+.detail-key { color:#3aaa5a; white-space:nowrap; }
+.detail-val { color:#aaaaaa; word-break:break-all; }
 </style>
 </head>
 <body>
@@ -137,14 +166,12 @@ tr.sq.sq-show        { display:table-row; }
     <a href="/raw?day={{ current }}" class="btn">📄 Raw Data</a>
     <button id="snd-btn" onclick="toggleSound()" style="border-color:#555;color:#555;">🔔 Sound</button>
     <a href="https://github.com/anthonyborriello/acars-pi-dashboard"
-       class="btn"
-       target="_blank"
-       rel="noopener noreferrer">GitHub ↗</a>
+       class="btn" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
 </div>
 
 <div class="sq-bar">
     ◎ SQ squitter &nbsp; <span class="sq-count" id="sq-count">{{ sq_count }}</span>
-    <button id="sq-toggle" onclick="toggleSQ()">View →</button>
+    <button id="sq-toggle" onclick="toggleSQ()">View</button>
 </div>
 
 <table>
@@ -157,7 +184,8 @@ tr.sq.sq-show        { display:table-row; }
 </thead>
 <tbody id="msgbody">
 {% for m in messages %}
-<tr class="{{ m['cls'] }}">
+<tr class="{{ m['cls'] }}{% if m['detail'] %} has-detail{% endif %}"
+    {% if m['detail'] %}onclick="toggleDetail(this)" data-detail="{{ m['detail'] | tojson | forceescape }}"{% endif %}>
     <td>{{ m['ts'] }}</td>
     <td>{{ m['freq'] }}</td>
     <td style="white-space:nowrap;">
@@ -174,6 +202,11 @@ tr.sq.sq-show        { display:table-row; }
     <td>{{ m['alt'] if m['alt'] is not none else '' }}</td>
     <td class="telemetry">{{ m['extra'] }}</td>
 </tr>
+{% if m['detail'] %}
+<tr class="detail-row">
+    <td colspan="13"></td>
+</tr>
+{% endif %}
 {% endfor %}
 </tbody>
 </table>
@@ -215,9 +248,68 @@ function toggleSQ() {
     sqVisible = !sqVisible;
     document.querySelectorAll("tr.sq").forEach(function(tr) {
         tr.classList.toggle("sq-show", sqVisible);
+        // when hiding, close any open detail panels
+        if (!sqVisible) {
+            var detailTr = tr.nextElementSibling;
+            if (detailTr && detailTr.classList.contains("detail-row")) {
+                detailTr.classList.remove("open");
+            }
+            tr.classList.remove("expanded");
+        }
     });
-    document.getElementById("sq-toggle").textContent = sqVisible ? "Hide ✖" : "View →";
+    document.getElementById("sq-toggle").textContent = sqVisible ? "Hide" : "View";
 }
+
+// ── detail panel ─────────────────────────────────────────────────────────────
+
+function flattenObj(obj, prefix) {
+    var rows = [];
+    prefix = prefix || "";
+    Object.keys(obj).forEach(function(k) {
+        var val = obj[k];
+        var key = prefix ? prefix + "." + k : k;
+        if (val !== null && typeof val === "object" && !Array.isArray(val)) {
+            rows = rows.concat(flattenObj(val, key));
+        } else {
+            rows.push([key, Array.isArray(val) ? JSON.stringify(val) : String(val)]);
+        }
+    });
+    return rows;
+}
+
+function buildDetailHTML(detail) {
+    if (!detail) return "";
+    var rows = flattenObj(detail);
+    if (!rows.length) return "";
+    var html = '<div class="detail-grid">';
+    var currentSection = "";
+    rows.forEach(function(pair) {
+        var section = pair[0].split(".")[0];
+        if (section !== currentSection) {
+            currentSection = section;
+            html += '<div class="detail-section">◈ ' + section.toUpperCase() + '</div>';
+        }
+        html += '<div class="detail-key">' + pair[0].split(".").pop() + '</div>';
+        html += '<div class="detail-val">' + pair[1] + '</div>';
+    });
+    html += '</div>';
+    return html;
+}
+
+function toggleDetail(tr) {
+    var detailTr = tr.nextElementSibling;
+    if (!detailTr || !detailTr.classList.contains("detail-row")) return;
+    var isOpen = detailTr.classList.contains("open");
+    if (!isOpen && !detailTr.querySelector(".detail-grid")) {
+        var detail = tr.getAttribute("data-detail");
+        try { detail = JSON.parse(detail); } catch(e) { detail = null; }
+        detailTr.querySelector("td").innerHTML = buildDetailHTML(detail);
+    }
+    detailTr.classList.toggle("open", !isOpen);
+    tr.classList.toggle("expanded", !isOpen);
+}
+
+// ── live polling ─────────────────────────────────────────────────────────────
 
 function badgeHTML(sublabel) {
     return sublabel ? ' <span class="badge">' + sublabel + '</span>' : "";
@@ -226,10 +318,14 @@ function badgeHTML(sublabel) {
 function addRow(m) {
     var tbody = document.getElementById("msgbody");
     var tr    = document.createElement("tr");
-    // cls and status already computed by Python enrich()
-    var cls = m.cls + " new";
+    var cls   = m.cls + " new";
     if (m.label === "SQ" && sqVisible) cls += " sq-show";
+    if (m.detail) cls += " has-detail";
     tr.className = cls;
+    if (m.detail) {
+        tr.setAttribute("data-detail", JSON.stringify(m.detail));
+        tr.onclick = function() { toggleDetail(this); };
+    }
     tr.innerHTML =
         "<td>" + (m.ts       || "") + "</td>" +
         "<td>" + (m.freq     || "") + "</td>" +
@@ -245,6 +341,14 @@ function addRow(m) {
         "<td>" + (m.alt  !== null ? m.alt  : "") + "</td>" +
         "<td class='telemetry'>" + (m.extra || "") + "</td>";
     tbody.insertBefore(tr, tbody.firstChild);
+
+    if (m.detail) {
+        var dtr = document.createElement("tr");
+        dtr.className = "detail-row";
+        dtr.innerHTML = "<td colspan='13'></td>";
+        tbody.insertBefore(dtr, tr.nextSibling);
+    }
+
     if (m.label === "SQ") beep(300, 80, "sine", 120);
     else { beep(800, 90, "triangle"); setTimeout(function(){ beep(800, 90, "triangle"); }, 130); }
 }
@@ -283,6 +387,13 @@ if (isToday) setInterval(poll, 5000);
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
+# Fields already shown as dedicated columns — excluded from detail panel
+EXCLUDED_FROM_DETAIL = {
+    "freq", "label", "tail", "flight", "assstat", "text", "error",
+    "block_id", "msgno", "mode", "ack", "channel", "timestamp",
+    "station_id", "app", "sublabel"
+}
+
 def get_available_days():
     files = sorted(glob.glob(os.path.join(LOGS_DIR, "acars_*.db")), reverse=True)
     return [os.path.basename(f).replace("acars_", "").replace(".db", "") for f in files]
@@ -291,7 +402,7 @@ def enrich(m):
     label   = m.get("label", "")
     assstat = m.get("assstat", "")
     error   = m.get("error", 0)
-    m.update(sublabel="", lat=None, lon=None, alt=None, extra="", block_id="", msgno="")
+    m.update(sublabel="", lat=None, lon=None, alt=None, extra="", block_id="", msgno="", detail=None)
 
     try:
         raw = m.get("raw", "{}")
@@ -328,7 +439,26 @@ def enrich(m):
     except Exception:
         pass
 
-    # CSS class — single source of truth (used by both template and /api/new)
+    # Build detail panel — signal info + libacars + any other unlisted fields
+    try:
+        detail = {}
+        # group level and noise under a single "signal" section
+        detail["signal"] = {}
+        for k in ("level", "noise"):
+            if k in raw:
+                detail["signal"][k] = raw[k]
+        if not detail["signal"]:
+            del detail["signal"]
+        if "libacars" in raw:
+            detail["libacars"] = raw["libacars"]
+        for k, v in raw.items():
+            if k not in EXCLUDED_FROM_DETAIL and k not in detail and k not in ("level", "noise"):
+                detail[k] = v
+        m["detail"] = detail if detail else None
+    except Exception:
+        pass
+
+    # CSS class
     if label == "SQ":
         m["cls"] = "sq err" if error else "sq"
     elif m["lat"] is not None:
@@ -367,9 +497,9 @@ def get_messages(day, tail="", flight="", label="", assstat=""):
     return [enrich(dict(r)) for r in rows], last
 
 def get_stats(conn):
-    total    = conn.execute("SELECT COUNT(*)          FROM messages WHERE label != 'SQ'").fetchone()[0]
+    total    = conn.execute("SELECT COUNT(*)             FROM messages WHERE label != 'SQ'").fetchone()[0]
     aircraft = conn.execute("SELECT COUNT(DISTINCT tail) FROM messages WHERE label != 'SQ' AND tail != ''").fetchone()[0]
-    sq       = conn.execute("SELECT COUNT(*)          FROM messages WHERE label  = 'SQ'").fetchone()[0]
+    sq       = conn.execute("SELECT COUNT(*)             FROM messages WHERE label  = 'SQ'").fetchone()[0]
     return total, aircraft, sq
 
 def get_labels(day):
