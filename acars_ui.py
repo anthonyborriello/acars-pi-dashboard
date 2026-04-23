@@ -9,7 +9,7 @@
 #
 # Built on top of:
 # acarsdec  by Thierry Leconte  — https://github.com/TLeconte/acarsdec
-# libacars  by Tomasz Duda     — https://github.com/szpajder/libacars
+# libacars  by Tomasz Duda      — https://github.com/szpajder/libacars
 #
 from flask import Flask, render_template_string, jsonify, request
 import sqlite3
