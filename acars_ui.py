@@ -113,19 +113,57 @@ tr.has-detail td:first-child::before {
 tr.has-detail.expanded td:first-child::before {
     content:"▼ "; color:#00ff99;
 }
-.detail-grid {
+
+/* new hierarchical detail renderer */
+.detail-tree {
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+
+.detail-node {
+    margin-left:0;
+}
+
+.detail-children {
+    margin-left:18px;
+    border-left:1px solid #16301f;
+    padding-left:10px;
+    margin-top:3px;
+}
+
+.detail-group {
+    color:#00ff99;
+    font-size:10px;
+    letter-spacing:1px;
+    margin-top:6px;
+    margin-bottom:2px;
+}
+
+.detail-array {
+    color:#66bb88;
+    font-size:10px;
+    letter-spacing:.5px;
+    margin-top:4px;
+    margin-bottom:2px;
+}
+
+.detail-leaf {
     display:grid;
-    grid-template-columns: max-content 1fr;
-    gap:3px 20px;
+    grid-template-columns:max-content 1fr;
+    gap:3px 16px;
 }
-.detail-section {
-    grid-column: 1 / -1;
-    color:#00ff99; font-size:10px; letter-spacing:1px;
-    margin-top:8px; margin-bottom:3px;
-    border-bottom:1px solid #1a2a1a; padding-bottom:2px;
+
+.detail-key {
+    color:#3aaa5a;
+    white-space:nowrap;
+    padding-left:0;
 }
-.detail-key { color:#3aaa5a; white-space:nowrap; }
-.detail-val { color:#aaaaaa; word-break:break-all; }
+
+.detail-val {
+    color:#aaaaaa;
+    word-break:break-all;
+}
 </style>
 </head>
 <body>
@@ -248,7 +286,6 @@ function toggleSQ() {
     sqVisible = !sqVisible;
     document.querySelectorAll("tr.sq").forEach(function(tr) {
         tr.classList.toggle("sq-show", sqVisible);
-        // when hiding, close any open detail panels
         if (!sqVisible) {
             var detailTr = tr.nextElementSibling;
             if (detailTr && detailTr.classList.contains("detail-row")) {
@@ -262,35 +299,78 @@ function toggleSQ() {
 
 // ── detail panel ─────────────────────────────────────────────────────────────
 
-function flattenObj(obj, prefix) {
-    var rows = [];
-    prefix = prefix || "";
-    Object.keys(obj).forEach(function(k) {
-        var val = obj[k];
-        var key = prefix ? prefix + "." + k : k;
-        if (val !== null && typeof val === "object" && !Array.isArray(val)) {
-            rows = rows.concat(flattenObj(val, key));
-        } else {
-            rows.push([key, Array.isArray(val) ? JSON.stringify(val) : String(val)]);
-        }
-    });
-    return rows;
+function escapeHtml(v) {
+    return String(v)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function isPlainObject(v) {
+    return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+function renderNode(key, value) {
+    var html = "";
+
+    if (Array.isArray(value)) {
+        html += '<div class="detail-node">';
+        html += '<div class="detail-array">— ' + escapeHtml(key) + '</div>';
+        html += '<div class="detail-children">';
+
+        value.forEach(function(item, idx) {
+            if (isPlainObject(item)) {
+                var itemKeys = Object.keys(item);
+
+                if (itemKeys.length === 1) {
+                    var onlyKey = itemKeys[0];
+                    html += renderNode(onlyKey, item[onlyKey]);
+                } else {
+                    html += '<div class="detail-group">#' + (idx + 1) + '</div>';
+                    itemKeys.forEach(function(k) {
+                        html += renderNode(k, item[k]);
+                    });
+                }
+            } else if (Array.isArray(item)) {
+                html += renderNode('[' + idx + ']', item);
+            } else {
+                html += '<div class="detail-leaf">' +
+                        '<div class="detail-key">[' + idx + ']</div>' +
+                        '<div class="detail-val">' + escapeHtml(item) + '</div>' +
+                        '</div>';
+            }
+        });
+
+        html += '</div></div>';
+        return html;
+    }
+
+    if (isPlainObject(value)) {
+        html += '<div class="detail-node">';
+        html += '<div class="detail-group">◈ ' + escapeHtml(key) + '</div>';
+        html += '<div class="detail-children">';
+
+        Object.keys(value).forEach(function(childKey) {
+            html += renderNode(childKey, value[childKey]);
+        });
+
+        html += '</div></div>';
+        return html;
+    }
+
+    return '<div class="detail-leaf">' +
+           '<div class="detail-key">' + escapeHtml(key) + '</div>' +
+           '<div class="detail-val">' + escapeHtml(value) + '</div>' +
+           '</div>';
 }
 
 function buildDetailHTML(detail) {
-    if (!detail) return "";
-    var rows = flattenObj(detail);
-    if (!rows.length) return "";
-    var html = '<div class="detail-grid">';
-    var currentSection = "";
-    rows.forEach(function(pair) {
-        var section = pair[0].split(".")[0];
-        if (section !== currentSection) {
-            currentSection = section;
-            html += '<div class="detail-section">◈ ' + section.toUpperCase() + '</div>';
-        }
-        html += '<div class="detail-key">' + pair[0].split(".").pop() + '</div>';
-        html += '<div class="detail-val">' + pair[1] + '</div>';
+    if (!detail || typeof detail !== "object") return "";
+    var html = '<div class="detail-tree">';
+    Object.keys(detail).forEach(function(key) {
+        html += renderNode(key, detail[key]);
     });
     html += '</div>';
     return html;
@@ -300,7 +380,7 @@ function toggleDetail(tr) {
     var detailTr = tr.nextElementSibling;
     if (!detailTr || !detailTr.classList.contains("detail-row")) return;
     var isOpen = detailTr.classList.contains("open");
-    if (!isOpen && !detailTr.querySelector(".detail-grid")) {
+    if (!isOpen && !detailTr.querySelector(".detail-tree")) {
         var detail = tr.getAttribute("data-detail");
         try { detail = JSON.parse(detail); } catch(e) { detail = null; }
         detailTr.querySelector("td").innerHTML = buildDetailHTML(detail);
@@ -387,10 +467,9 @@ if (isToday) setInterval(poll, 5000);
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-# Fields already shown as dedicated columns — excluded from detail panel
 EXCLUDED_FROM_DETAIL = {
     "freq", "label", "tail", "flight", "assstat", "text", "error",
-    "block_id", "msgno", "mode", "ack", "channel", "timestamp",
+    "block_id", "msgno", "ack", "channel", "timestamp",
     "station_id", "app", "sublabel"
 }
 
@@ -439,21 +518,32 @@ def enrich(m):
     except Exception:
         pass
 
-    # Build detail panel — signal info + libacars + any other unlisted fields
+    # Build detail panel
     try:
         detail = {}
-        # group level and noise under a single "signal" section
-        detail["signal"] = {}
+
+        # signal
+        signal = {}
         for k in ("level", "noise"):
             if k in raw:
-                detail["signal"][k] = raw[k]
-        if not detail["signal"]:
-            del detail["signal"]
+                signal[k] = raw[k]
+        if signal:
+            detail["signal"] = signal
+
+        # structured decoded payload
         if "libacars" in raw:
             detail["libacars"] = raw["libacars"]
+
+        # everything else goes under metadata
+        metadata = {}
         for k, v in raw.items():
-            if k not in EXCLUDED_FROM_DETAIL and k not in detail and k not in ("level", "noise"):
-                detail[k] = v
+            if k in EXCLUDED_FROM_DETAIL or k in ("level", "noise", "libacars"):
+                continue
+            metadata[k] = v
+
+        if metadata:
+            detail["metadata"] = metadata
+
         m["detail"] = detail if detail else None
     except Exception:
         pass
