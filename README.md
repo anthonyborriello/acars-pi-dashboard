@@ -7,6 +7,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?style=flat-square&logo=sqlite&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Raspberry%20Pi-C51A4A?style=flat-square&logo=raspberry-pi&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-00ff99?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.2-00ff99?style=flat-square)
 
 ---
 
@@ -35,6 +36,7 @@ Tested on **Raspberry Pi 2B** with **Debian Trixie**, but runs on any modern Lin
 
 - **Live dashboard** — new messages appear automatically every 5 seconds, no refresh needed
 - **Color-coded rows** — ADS-C telemetry in blue, complete messages in white, errors in red, SQ squitter dimmed
+- **Expandable detail panel** — click any row to reveal full decoded data: signal level, noise floor, libacars output, and all raw fields not shown in the main table
 - **ADS-C telemetry extraction** — latitude, longitude, altitude, ground speed, track, vertical speed decoded from ARINC-622 / libacars data
 - **Per-day SQLite databases** — automatic UTC midnight rotation, historical day browsing via dropdown
 - **Filtering** — filter by tail number, flight number, label type, and message status
@@ -280,6 +282,10 @@ The `sleep 60/70` gives the system time to fully initialize before starting (net
 | ⬛ Dim green | SQ squitter (hidden by default) |
 | ▪ Grey | General message |
 
+### Expandable detail panel
+
+Click any row marked with `▶` to expand a detail panel showing all decoded data for that message — signal level, noise floor, full libacars tree, and any additional fields not displayed in the main table. Click again to collapse. The panel is lazy-loaded: content is rendered only on first open.
+
 ---
 
 ## Database structure
@@ -374,6 +380,17 @@ Only one instance of `acars_logger.py` can run at a time — acarsdec will fail 
 
 ---
 
+## Changelog
+
+### v1.2
+- feat: expandable detail panel — click any row to reveal full decoded data (signal level, noise, libacars tree, raw fields)
+- fix: SQ squitter detail panels now correctly close when hiding squitter rows via the toggle button
+
+### v1.1
+- Initial public release
+
+---
+
 ## Contributing
 
 Pull requests are welcome. If you test on a new platform or hardware combination, please open an issue or PR to update the compatibility table.
@@ -392,4 +409,3 @@ Pull requests are welcome. If you test on a new platform or hardware combination
 ## License
 
 MIT License — free to use, modify, and distribute.
-
