@@ -114,7 +114,7 @@ tr.has-detail.expanded td:first-child::before {
     content:"▼ "; color:#00ff99;
 }
 
-/* new hierarchical detail renderer */
+/* hierarchical detail renderer */
 .detail-tree {
     display:flex;
     flex-direction:column;
@@ -196,8 +196,7 @@ tr.has-detail.expanded td:first-child::before {
         <select name="assstat">
             <option value="">Status</option>
             <option value="complete"    {{ 'selected' if filter_assstat == 'complete'    else '' }}>FULL</option>
-            <option value="in progress" {{ 'selected' if filter_assstat == 'in progress' else '' }}>In progress</option>
-        </select>
+            <option value="in progress" {{ 'selected' if filter_assstat == 'in progress' else '' }}>In progress</option>        </select>
         <button type="submit">🔍 Filter</button>
         <a href="/?day={{ current }}" class="reset">✖ Reset</a>
     </form>
@@ -320,25 +319,23 @@ function renderNode(key, value) {
         html += '<div class="detail-array">— ' + escapeHtml(key) + '</div>';
         html += '<div class="detail-children">';
 
-        value.forEach(function(item, idx) {
+        value.forEach(function(item) {
             if (isPlainObject(item)) {
                 var itemKeys = Object.keys(item);
-
                 if (itemKeys.length === 1) {
                     var onlyKey = itemKeys[0];
                     html += renderNode(onlyKey, item[onlyKey]);
                 } else {
-                    html += '<div class="detail-group">#' + (idx + 1) + '</div>';
                     itemKeys.forEach(function(k) {
                         html += renderNode(k, item[k]);
                     });
                 }
             } else if (Array.isArray(item)) {
-                html += renderNode('[' + idx + ']', item);
+                html += renderNode('[]', item);
             } else {
                 html += '<div class="detail-leaf">' +
-                        '<div class="detail-key">[' + idx + ']</div>' +
-                        '<div class="detail-val">' + escapeHtml(item) + '</div>' +
+                        '<div class="detail-key">' + escapeHtml(item) + '</div>' +
+                        '<div class="detail-val"></div>' +
                         '</div>';
             }
         });
@@ -351,11 +348,9 @@ function renderNode(key, value) {
         html += '<div class="detail-node">';
         html += '<div class="detail-group">◈ ' + escapeHtml(key) + '</div>';
         html += '<div class="detail-children">';
-
         Object.keys(value).forEach(function(childKey) {
             html += renderNode(childKey, value[childKey]);
         });
-
         html += '</div></div>';
         return html;
     }
@@ -518,31 +513,27 @@ def enrich(m):
     except Exception:
         pass
 
-    # Build detail panel
+    # Build detail panel — order: libacars → metadata → signal
     try:
         detail = {}
 
-        # signal
+        if "libacars" in raw:
+            detail["libacars"] = raw["libacars"]
+
+        metadata = {}
+        for k, v in raw.items():
+            if k in EXCLUDED_FROM_DETAIL or k in ("level", "noise", "libacars"):
+                continue
+            metadata[k] = v
+        if metadata:
+            detail["metadata"] = metadata
+
         signal = {}
         for k in ("level", "noise"):
             if k in raw:
                 signal[k] = raw[k]
         if signal:
             detail["signal"] = signal
-
-        # structured decoded payload
-        if "libacars" in raw:
-            detail["libacars"] = raw["libacars"]
-
-        # everything else goes under metadata
-        metadata = {}
-        for k, v in raw.items():
-            if k in EXCLUDED_FROM_DETAIL or k in ("level", "noise", "libacars"):
-                continue
-            metadata[k] = v
-
-        if metadata:
-            detail["metadata"] = metadata
 
         m["detail"] = detail if detail else None
     except Exception:
