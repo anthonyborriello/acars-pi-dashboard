@@ -8,8 +8,8 @@
 # License : MIT
 #
 # Built on top of:
-#   acarsdec  by Thierry Leconte  — https://github.com/TLeconte/acarsdec
-#   libacars  by Tomasz Duda     — https://github.com/szpajder/libacars
+# acarsdec  by Thierry Leconte  — https://github.com/TLeconte/acarsdec
+# libacars  by Tomasz Duda      — https://github.com/szpajder/libacars
 #
 import subprocess
 import sqlite3
