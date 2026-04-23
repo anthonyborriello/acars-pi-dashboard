@@ -26,9 +26,11 @@ Tested on **Raspberry Pi 2B** with **Debian Trixie**, but runs on any modern Lin
 
 ## Screenshots
 
-<img width="1920" height="1080" alt="web page" src="https://github.com/user-attachments/assets/f59282ed-9dc9-4e21-95d3-60931e6ee94a" />
+<img width="1920" height="1080" alt="web_ui1" src="https://github.com/user-attachments/assets/9e7564d9-d2c1-4d54-92bd-17bfd691df09" />
 <br><br>
-<img width="1920" height="1080" alt="web page 2" src="https://github.com/user-attachments/assets/e1cb0520-524b-4e8d-a567-1a57a32bd95b" />
+<img width="1920" height="1080" alt="web_ui2" src="https://github.com/user-attachments/assets/f5851eed-87e6-4aa7-a917-5f59b14fd83b" />
+<br><br>
+<img width="1920" height="1080" alt="web_ui3" src="https://github.com/user-attachments/assets/8c1a8b65-799a-43f5-b8d9-baa04eafd960" />
 
 ---
 
