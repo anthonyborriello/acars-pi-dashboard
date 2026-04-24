@@ -28,7 +28,9 @@ Tested on **Raspberry Pi 2B** with **Debian Trixie**, but runs on any modern Lin
 
 <img width="1920" height="1080" alt="1" src="https://github.com/user-attachments/assets/36201ec1-8d7f-4c52-9668-af373c847f79" />
 <br><br>
-<img width="1920" height="1080" alt="extra_sata" src="https://github.com/user-attachments/assets/f4227e9b-a397-40e3-a338-8044634c881c" />
+<img width="1920" height="1080" alt="extra" src="https://github.com/user-attachments/assets/6f108f33-45e9-42cb-b55a-3a9e212fd90e" />
+<br><br>
+<img width="1920" height="1080" alt="formatted" src="https://github.com/user-attachments/assets/493ab976-646f-4412-9608-84d252691e1a" />
 
 ---
 
@@ -381,6 +383,10 @@ Only one instance of `acars_logger.py` can run at a time — acarsdec will fail 
 ---
 
 ## Changelog
+### v1.3
+- feat: improved message formatting — optimized the detail panel to preserve the original structure of ACARS messages, ensuring that well-formatted data (like WDR and flight plans) remains perfectly aligned.
+- feat: ACARS bell notification — added explicit support for the "BELL" indicator, highlighting high-priority alerts within the message body.
+- fix: dynamic wrapping — implemented smart CSS wrapping to handle long technical data dumps without breaking the UI layout, while allowing the box to scale naturally with the message content.
 
 ### v1.2
 - feat: expandable detail panel — click any row to reveal full decoded data (signal level, noise, libacars tree, raw fields)
