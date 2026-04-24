@@ -3,14 +3,11 @@
 # acars-pi-dashboard — acars_ui.py
 # Real-time ACARS web dashboard via Flask + SQLite (WAL mode)
 #
-# Project : https://github.com/anthonyborriello/acars-pi-dashboard
+# Project : [https://github.com/anthonyborriello/acars-pi-dashboard](https://github.com/anthonyborriello/acars-pi-dashboard)
 # Author  : Antonio Borriello
 # License : MIT
 #
-# Built on top of:
-# acarsdec  by Thierry Leconte  — https://github.com/TLeconte/acarsdec
-# libacars  by Tomasz Duda      — https://github.com/szpajder/libacars
-#
+
 from flask import Flask, render_template_string, jsonify, request
 import sqlite3
 import json
@@ -99,7 +96,22 @@ tr.sq.sq-show        { display:table-row; }
     background:#1a2a1a; border:1px solid #336633; color:#88cc88;
 }
 
-/* expandable detail row */
+/* Adaptive BELL label */
+.bell-label {
+    font-size: 9px;
+    text-transform: lowercase;
+    color: currentColor;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid currentColor;
+    padding: 0px 3px;
+    border-radius: 2px;
+    vertical-align: middle;
+    font-weight: bold;
+    margin: 0 2px;
+    font-family: sans-serif;
+    opacity: 0.9;
+}
+
 tr.detail-row      { display:none; }
 tr.detail-row.open { display:table-row; }
 tr.detail-row td   {
@@ -114,55 +126,33 @@ tr.has-detail.expanded td:first-child::before {
     content:"▼ "; color:#00ff99;
 }
 
-/* hierarchical detail renderer */
-.detail-tree {
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-}
-
-.detail-node {
-    margin-left:0;
-}
-
+.detail-tree { display:flex; flex-direction:column; gap:4px; }
+.detail-node { margin-left:0; }
 .detail-children {
     margin-left:18px;
     border-left:1px solid #16301f;
     padding-left:10px;
     margin-top:3px;
 }
+.detail-group { color:#00ff99; font-size:10px; letter-spacing:1px; margin-top:6px; margin-bottom:2px; }
+.detail-array { color:#66bb88; font-size:10px; letter-spacing:.5px; margin-top:4px; margin-bottom:2px; }
+.detail-leaf { display:grid; grid-template-columns:max-content 1fr; gap:3px 16px; }
+.detail-key { color:#3aaa5a; white-space:nowrap; padding-left:0; }
+.detail-val { color:#aaaaaa; word-break:break-all; }
 
-.detail-group {
-    color:#00ff99;
-    font-size:10px;
-    letter-spacing:1px;
-    margin-top:6px;
-    margin-bottom:2px;
-}
-
-.detail-array {
-    color:#66bb88;
-    font-size:10px;
-    letter-spacing:.5px;
-    margin-top:4px;
-    margin-bottom:2px;
-}
-
-.detail-leaf {
-    display:grid;
-    grid-template-columns:max-content 1fr;
-    gap:3px 16px;
-}
-
-.detail-key {
-    color:#3aaa5a;
-    white-space:nowrap;
-    padding-left:0;
-}
-
-.detail-val {
-    color:#aaaaaa;
-    word-break:break-all;
+.message-text {
+    font-family:'Courier New', monospace;
+    font-size:11px;
+    line-height:1.35em;
+    white-space:pre-wrap;
+    word-break:normal;
+    overflow-wrap:normal;
+    overflow-x:auto;
+    color:#cccccc;
+    background:#08110b;
+    border:1px solid #16301f;
+    padding:6px 10px;
+    margin-left:0;
 }
 </style>
 </head>
@@ -196,7 +186,8 @@ tr.has-detail.expanded td:first-child::before {
         <select name="assstat">
             <option value="">Status</option>
             <option value="complete"    {{ 'selected' if filter_assstat == 'complete'    else '' }}>FULL</option>
-            <option value="in progress" {{ 'selected' if filter_assstat == 'in progress' else '' }}>In progress</option>        </select>
+            <option value="in progress" {{ 'selected' if filter_assstat == 'in progress' else '' }}>In progress</option>
+        </select>
         <button type="submit">🔍 Filter</button>
         <a href="/?day={{ current }}" class="reset">✖ Reset</a>
     </form>
@@ -233,7 +224,7 @@ tr.has-detail.expanded td:first-child::before {
     <td>{{ m['block_id'] }}</td>
     <td>{{ m['msgno'] }}</td>
     <td>{{ m['status'] }}</td>
-    <td style="max-width:550px;word-break:break-all;">{{ m['text'] }}</td>
+    <td style="max-width:550px;word-break:break-all;">{{ m['text_original'] | safe }}</td>
     <td>{{ m['lat'] if m['lat'] is not none else '' }}</td>
     <td>{{ m['lon'] if m['lon'] is not none else '' }}</td>
     <td>{{ m['alt'] if m['alt'] is not none else '' }}</td>
@@ -285,90 +276,54 @@ function toggleSQ() {
     sqVisible = !sqVisible;
     document.querySelectorAll("tr.sq").forEach(function(tr) {
         tr.classList.toggle("sq-show", sqVisible);
-        if (!sqVisible) {
-            var detailTr = tr.nextElementSibling;
-            if (detailTr && detailTr.classList.contains("detail-row")) {
-                detailTr.classList.remove("open");
-            }
-            tr.classList.remove("expanded");
-        }
     });
     document.getElementById("sq-toggle").textContent = sqVisible ? "Hide" : "View";
 }
-
-// ── detail panel ─────────────────────────────────────────────────────────────
 
 function escapeHtml(v) {
     return String(v)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
+        .replace(/\"/g, "&quot;")
         .replace(/'/g, "&#39;");
 }
 
-function isPlainObject(v) {
-    return v !== null && typeof v === "object" && !Array.isArray(v);
-}
+function isPlainObject(v) { return v !== null && typeof v === "object" && !Array.isArray(v); }
 
 function renderNode(key, value) {
     var html = "";
-
+    if (key === "text" && isPlainObject(value) && "text" in value) {
+        html += '<div class="detail-node"><div class="detail-group">◈ ' + escapeHtml(key) + '</div>';
+        html += '<div class="detail-children"><div class="message-text">' + value.text + '</div></div></div>';
+        return html;
+    }
     if (Array.isArray(value)) {
-        html += '<div class="detail-node">';
-        html += '<div class="detail-array">— ' + escapeHtml(key) + '</div>';
-        html += '<div class="detail-children">';
-
+        html += '<div class="detail-node"><div class="detail-array">— ' + escapeHtml(key) + '</div><div class="detail-children">';
         value.forEach(function(item) {
             if (isPlainObject(item)) {
-                var itemKeys = Object.keys(item);
-                if (itemKeys.length === 1) {
-                    var onlyKey = itemKeys[0];
-                    html += renderNode(onlyKey, item[onlyKey]);
-                } else {
-                    itemKeys.forEach(function(k) {
-                        html += renderNode(k, item[k]);
-                    });
-                }
-            } else if (Array.isArray(item)) {
-                html += renderNode('[]', item);
+                Object.keys(item).forEach(function(k) { html += renderNode(k, item[k]); });
             } else {
-                html += '<div class="detail-leaf">' +
-                        '<div class="detail-key">' + escapeHtml(item) + '</div>' +
-                        '<div class="detail-val"></div>' +
-                        '</div>';
+                html += '<div class="detail-leaf"><div class="detail-key">' + escapeHtml(item) + '</div><div class="detail-val"></div></div>';
             }
         });
-
         html += '</div></div>';
         return html;
     }
-
     if (isPlainObject(value)) {
-        html += '<div class="detail-node">';
-        html += '<div class="detail-group">◈ ' + escapeHtml(key) + '</div>';
-        html += '<div class="detail-children">';
-        Object.keys(value).forEach(function(childKey) {
-            html += renderNode(childKey, value[childKey]);
-        });
+        html += '<div class="detail-node"><div class="detail-group">◈ ' + escapeHtml(key) + '</div><div class="detail-children">';
+        Object.keys(value).forEach(function(childKey) { html += renderNode(childKey, value[childKey]); });
         html += '</div></div>';
         return html;
     }
-
-    return '<div class="detail-leaf">' +
-           '<div class="detail-key">' + escapeHtml(key) + '</div>' +
-           '<div class="detail-val">' + escapeHtml(value) + '</div>' +
-           '</div>';
+    return '<div class="detail-leaf"><div class="detail-key">' + escapeHtml(key) + '</div><div class="detail-val">' + escapeHtml(value) + '</div></div>';
 }
 
 function buildDetailHTML(detail) {
     if (!detail || typeof detail !== "object") return "";
     var html = '<div class="detail-tree">';
-    Object.keys(detail).forEach(function(key) {
-        html += renderNode(key, detail[key]);
-    });
-    html += '</div>';
-    return html;
+    Object.keys(detail).forEach(function(key) { html += renderNode(key, detail[key]); });
+    return html + '</div>';
 }
 
 function toggleDetail(tr) {
@@ -384,12 +339,6 @@ function toggleDetail(tr) {
     tr.classList.toggle("expanded", !isOpen);
 }
 
-// ── live polling ─────────────────────────────────────────────────────────────
-
-function badgeHTML(sublabel) {
-    return sublabel ? ' <span class="badge">' + sublabel + '</span>' : "";
-}
-
 function addRow(m) {
     var tbody = document.getElementById("msgbody");
     var tr    = document.createElement("tr");
@@ -402,18 +351,18 @@ function addRow(m) {
         tr.onclick = function() { toggleDetail(this); };
     }
     tr.innerHTML =
-        "<td>" + (m.ts       || "") + "</td>" +
-        "<td>" + (m.freq     || "") + "</td>" +
-        "<td style='white-space:nowrap;'>" + (m.label || "") + badgeHTML(m.sublabel) + "</td>" +
-        "<td>" + (m.tail     || "") + "</td>" +
-        "<td>" + (m.flight   || "") + "</td>" +
+        "<td>" + (m.ts || "") + "</td>" +
+        "<td>" + (m.freq || "") + "</td>" +
+        "<td style='white-space:nowrap;'>" + (m.label || "") + (m.sublabel ? ' <span class="badge">' + m.sublabel + '</span>' : "") + "</td>" +
+        "<td>" + (m.tail || "") + "</td>" +
+        "<td>" + (m.flight || "") + "</td>" +
         "<td>" + (m.block_id || "") + "</td>" +
-        "<td>" + (m.msgno    || "") + "</td>" +
-        "<td>" + (m.status   || "") + "</td>" +
-        "<td style='max-width:550px;word-break:break-all;'>" + (m.text || "") + "</td>" +
-        "<td>" + (m.lat  !== null ? m.lat  : "") + "</td>" +
-        "<td>" + (m.lon  !== null ? m.lon  : "") + "</td>" +
-        "<td>" + (m.alt  !== null ? m.alt  : "") + "</td>" +
+        "<td>" + (m.msgno || "") + "</td>" +
+        "<td>" + (m.status || "") + "</td>" +
+        "<td style='max-width:550px;word-break:break-all;'>" + (m.text_original || "") + "</td>" +
+        "<td>" + (m.lat !== null ? m.lat : "") + "</td>" +
+        "<td>" + (m.lon !== null ? m.lon : "") + "</td>" +
+        "<td>" + (m.alt !== null ? m.alt : "") + "</td>" +
         "<td class='telemetry'>" + (m.extra || "") + "</td>";
     tbody.insertBefore(tr, tbody.firstChild);
 
@@ -437,10 +386,7 @@ function setStatus(msg, isErr) {
 function poll() {
     if (!isToday) return;
     fetch("/api/new?day=" + currentDay + "&last_id=" + lastId)
-        .then(function(r) {
-            if (!r.ok) throw new Error("HTTP " + r.status);
-            return r.json();
-        })
+        .then(function(r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
         .then(function(data) {
             data.messages.forEach(addRow);
             if (data.messages.length) lastId = data.last_id;
@@ -449,9 +395,7 @@ function poll() {
             document.getElementById("sq-count").textContent = data.sq;
             setStatus("updated: " + new Date().toLocaleTimeString(), false);
         })
-        .catch(function() {
-            setStatus("⚠ connection lost — retrying…", true);
-        });
+        .catch(function() { setStatus("⚠ connection lost — retrying…", true); });
 }
 
 if (isToday) setInterval(poll, 5000);
@@ -459,8 +403,6 @@ if (isToday) setInterval(poll, 5000);
 </body>
 </html>
 """
-
-# ── helpers ──────────────────────────────────────────────────────────────────
 
 EXCLUDED_FROM_DETAIL = {
     "freq", "label", "tail", "flight", "assstat", "text", "error",
@@ -489,87 +431,74 @@ def enrich(m):
     if label == "H1":
         m["sublabel"] = raw.get("sublabel", "")
 
-    # ADS-C telemetry extraction
+    # Handle the text and replace BELL character with styled span
+    try:
+        raw_text = raw.get("text")
+        if not isinstance(raw_text, str):
+            raw_text = m.get("text", "")
+
+        if isinstance(raw_text, str):
+            # Replace BELL control char with adaptive styled label
+            m["text_original"] = raw_text.replace('\x07', '<span class="bell-label">bell</span>')
+        else:
+            m["text_original"] = ""
+    except Exception:
+        m["text_original"] = ""
+
+    # ADS-C Decoding
     try:
         for tag in raw.get("libacars", {}).get("arinc622", {}).get("adsc", {}).get("tags", []):
             report = tag.get("basic_report")
             if report and "lat" in report:
-                m["lat"] = round(float(report["lat"]), 5)
-                m["lon"] = round(float(report["lon"]), 5)
+                m["lat"], m["lon"] = round(float(report["lat"]), 5), round(float(report["lon"]), 5)
                 m["alt"] = report.get("alt")
             if "earth_ref_data" in tag:
-                erd  = tag["earth_ref_data"]
-                gs   = erd.get("gnd_spd_kts")
-                trk  = erd.get("true_trk_deg")
-                vspd = erd.get("vspd_ftmin")
+                erd = tag["earth_ref_data"]
+                gs, trk, vspd = erd.get("gnd_spd_kts"), erd.get("true_trk_deg"), erd.get("vspd_ftmin")
                 if gs is not None:
                     res = f"{int(gs)} {int(trk)}"
                     if vspd is not None:
-                        if   vspd >  150: res += f" +{int(vspd)}ft/min"
-                        elif vspd < -150: res += f" {int(vspd)}ft/min"
-                        else:             res += " 0"
+                        res += f" {int(vspd)}ft/min" if abs(vspd) > 150 else " 0"
                     m["extra"] = res
                 break
-    except Exception:
-        pass
+    except Exception: pass
 
-    # Build detail panel — order: libacars → metadata → signal
+    # Prepare detailed view
     try:
         detail = {}
+        if m.get("text_original"): detail["text"] = {"text": m["text_original"]}
+        if "libacars" in raw: detail["libacars"] = raw["libacars"]
 
-        if "libacars" in raw:
-            detail["libacars"] = raw["libacars"]
+        metadata = {k: v for k, v in raw.items() if k not in EXCLUDED_FROM_DETAIL and k not in ("level", "noise", "libacars")}
+        if metadata: detail["metadata"] = metadata
 
-        metadata = {}
-        for k, v in raw.items():
-            if k in EXCLUDED_FROM_DETAIL or k in ("level", "noise", "libacars"):
-                continue
-            metadata[k] = v
-        if metadata:
-            detail["metadata"] = metadata
-
-        signal = {}
-        for k in ("level", "noise"):
-            if k in raw:
-                signal[k] = raw[k]
-        if signal:
-            detail["signal"] = signal
-
+        signal = {k: raw[k] for k in ("level", "noise") if k in raw}
+        if signal: detail["signal"] = signal
         m["detail"] = detail if detail else None
-    except Exception:
-        pass
+    except Exception: pass
 
-    # CSS class
-    if label == "SQ":
-        m["cls"] = "sq err" if error else "sq"
-    elif m["lat"] is not None:
-        m["cls"] = "ads"
-    elif assstat == "complete":
-        m["cls"] = "complete"
-    elif error:
-        m["cls"] = "err"
-    else:
-        m["cls"] = "other"
+    if label == "SQ": m["cls"] = "sq err" if error else "sq"
+    elif m["lat"] is not None: m["cls"] = "ads"
+    elif assstat == "complete": m["cls"] = "complete"
+    elif error: m["cls"] = "err"
+    else: m["cls"] = "other"
 
     m["status"] = {"in progress": "[...]", "out of sequence": "[OOS]", "complete": "[FULL]"}.get(assstat, "")
     return m
 
 def db_connect(day):
     path = os.path.join(LOGS_DIR, f"acars_{day}.db")
-    if not os.path.exists(path):
-        return None
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
+    if not os.path.exists(path): return None
+    conn = sqlite3.connect(path); conn.row_factory = sqlite3.Row
     return conn
 
 def get_messages(day, tail="", flight="", label="", assstat=""):
     conn = db_connect(day)
-    if not conn:
-        return [], 0
+    if not conn: return [], 0
     q, p = "SELECT * FROM messages WHERE 1=1", []
-    if tail:    q += " AND tail LIKE ?";   p.append(f"%{tail}%")
-    if flight:  q += " AND flight LIKE ?"; p.append(f"%{flight}%")
-    if label:   q += " AND label = ?";     p.append(label)
+    if tail:   q += " AND tail LIKE ?";   p.append(f"%{tail}%")
+    if flight: q += " AND flight LIKE ?"; p.append(f"%{flight}%")
+    if label:  q += " AND label = ?";     p.append(label)
     if assstat: q += " AND assstat = ?";   p.append(assstat)
     q += " ORDER BY ts DESC"
     rows = conn.execute(q, p).fetchall()
@@ -578,79 +507,51 @@ def get_messages(day, tail="", flight="", label="", assstat=""):
     return [enrich(dict(r)) for r in rows], last
 
 def get_stats(conn):
-    total    = conn.execute("SELECT COUNT(*)             FROM messages WHERE label != 'SQ'").fetchone()[0]
+    total = conn.execute("SELECT COUNT(*) FROM messages WHERE label != 'SQ'").fetchone()[0]
     aircraft = conn.execute("SELECT COUNT(DISTINCT tail) FROM messages WHERE label != 'SQ' AND tail != ''").fetchone()[0]
-    sq       = conn.execute("SELECT COUNT(*)             FROM messages WHERE label  = 'SQ'").fetchone()[0]
+    sq = conn.execute("SELECT COUNT(*) FROM messages WHERE label = 'SQ'").fetchone()[0]
     return total, aircraft, sq
 
 def get_labels(day):
     conn = db_connect(day)
-    if not conn:
-        return []
+    if not conn: return []
     rows = conn.execute("SELECT DISTINCT label FROM messages ORDER BY label").fetchall()
     conn.close()
     return [r[0] for r in rows]
 
-# ── routes ────────────────────────────────────────────────────────────────────
-
 @app.route("/")
 def index():
     days = get_available_days()
-    day  = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
-    msgs, last_id = get_messages(
-        day,
-        request.args.get("tail", ""),
-        request.args.get("flight", ""),
-        request.args.get("label", ""),
-        request.args.get("assstat", ""),
-    )
+    day = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
+    msgs, last_id = get_messages(day, request.args.get("tail", ""), request.args.get("flight", ""), request.args.get("label", ""), request.args.get("assstat", ""))
     conn = db_connect(day)
     total, aircraft, sq_count = get_stats(conn) if conn else (0, 0, 0)
     if conn: conn.close()
-    return render_template_string(HTML,
-        messages=msgs, days=days, current=day,
-        total=total, aircraft=aircraft, sq_count=sq_count,
-        labels=get_labels(day), last_id=last_id,
-        filter_tail=request.args.get("tail", ""),
-        filter_flight=request.args.get("flight", ""),
-        filter_label=request.args.get("label", ""),
-        filter_assstat=request.args.get("assstat", ""),
-    )
+    return render_template_string(HTML, messages=msgs, days=days, current=day, total=total, aircraft=aircraft, sq_count=sq_count, labels=get_labels(day), last_id=last_id, filter_tail=request.args.get("tail", ""), filter_flight=request.args.get("flight", ""), filter_label=request.args.get("label", ""), filter_assstat=request.args.get("assstat", ""))
 
 @app.route("/api/new")
 def api_new():
-    """Single polling endpoint — returns new messages + updated stats in one shot."""
-    day  = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
+    day = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
     conn = db_connect(day)
-    if not conn:
-        return jsonify({"messages": [], "last_id": 0, "total": 0, "aircraft": 0, "sq": 0})
-    last_id  = int(request.args.get("last_id", 0))
-    rows     = conn.execute("SELECT * FROM messages WHERE id > ? ORDER BY id ASC", (last_id,)).fetchall()
+    if not conn: return jsonify({"messages": [], "last_id": 0, "total": 0, "aircraft": 0, "sq": 0})
+    last_id = int(request.args.get("last_id", 0))
+    rows = conn.execute("SELECT * FROM messages WHERE id > ? ORDER BY id ASC", (last_id,)).fetchall()
     new_last = conn.execute("SELECT MAX(id) FROM messages").fetchone()[0] or last_id
-    total, aircraft, sq = get_stats(conn)
-    conn.close()
-    return jsonify({
-        "messages": [enrich(dict(r)) for r in rows],
-        "last_id":  new_last,
-        "total":    total,
-        "aircraft": aircraft,
-        "sq":       sq,
-    })
+    total, aircraft, sq = get_stats(conn); conn.close()
+    return jsonify({"messages": [enrich(dict(r)) for r in rows], "last_id": new_last, "total": total, "aircraft": aircraft, "sq": sq})
 
 @app.route("/raw")
 def raw():
-    day   = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
+    day = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
     limit = min(int(request.args.get("limit", 1000)), 5000)
-    conn  = db_connect(day)
-    if not conn:
-        return jsonify({"error": "No DB"}), 404
-    rows = conn.execute("SELECT * FROM messages ORDER BY ts DESC LIMIT ?", (limit,)).fetchall()
-    conn.close()
+    conn = db_connect(day)
+    if not conn: return jsonify({"error": "No DB"}), 404
+    rows = conn.execute("SELECT * FROM messages ORDER BY ts DESC LIMIT ?", (limit,)).fetchall(); conn.close()
     result = []
     for r in rows:
         d = dict(r)
         try: d["raw"] = json.loads(d["raw"])
-        except Exception: pass
+        except: pass
         result.append(d)
     return jsonify(result)
 
