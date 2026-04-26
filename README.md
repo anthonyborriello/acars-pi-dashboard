@@ -7,7 +7,7 @@
 ![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?style=flat-square&logo=sqlite&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Raspberry%20Pi-C51A4A?style=flat-square&logo=raspberry-pi&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-00ff99?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.2-00ff99?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.3-00ff99?style=flat-square)
 
 ---
 
