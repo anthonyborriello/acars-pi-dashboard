@@ -3,7 +3,7 @@
 # acars-pi-dashboard — acars_ui.py
 # Real-time ACARS web dashboard via Flask + SQLite (WAL mode)
 #
-# Project : [https://github.com/anthonyborriello/acars-pi-dashboard](https://github.com/anthonyborriello/acars-pi-dashboard)
+# Project : https://github.com/anthonyborriello/acars-pi-dashboard
 # Author  : Antonio Borriello
 # License : MIT
 #
@@ -140,14 +140,17 @@ tr.has-detail.expanded td:first-child::before {
 .detail-key { color:#3aaa5a; white-space:nowrap; padding-left:0; }
 .detail-val { color:#aaaaaa; word-break:break-all; }
 
+/* Hide native calendar icon on date input */
+input[type="date"]::-webkit-calendar-picker-indicator { display:none; }
+input[type="date"] { appearance:none; -webkit-appearance:none; }
+
 .message-text {
     font-family:'Courier New', monospace;
     font-size:11px;
     line-height:1.35em;
-    white-space:pre-wrap;
-    word-break:normal;
-    overflow-wrap:normal;
+    white-space:pre;
     overflow-x:auto;
+    max-width:600px;
     color:#cccccc;
     background:#08110b;
     border:1px solid #16301f;
@@ -167,11 +170,17 @@ tr.has-detail.expanded td:first-child::before {
 <div id="status"></div>
 
 <div class="toolbar">
-    <select id="day-picker" onchange="location.href='/?day='+this.value">
-        {% for d in days %}
-        <option value="{{ d }}" {{ 'selected' if d == current else '' }}>{{ d }}</option>
-        {% endfor %}
-    </select>
+    <!-- CHANGE 1: native date picker instead of dropdown -->
+    <input type="date"
+           id="day-picker"
+           value="{{ current | replace('_', '-') }}"
+           min="{{ days[-1] | replace('_', '-') }}"
+           max="{{ days[0] | replace('_', '-') }}"
+           onchange="location.href='/?day='+this.value.replace(/-/g,'_')" onclick="try{this.showPicker();}catch(e){}"
+           style="background:#111;color:#00ff99;border:1px solid #333;
+                  padding:3px 7px;font-family:monospace;font-size:12px;
+                  color-scheme:dark;cursor:pointer;">
+
 
     <form method="get" style="display:contents">
         <input type="hidden" name="day" value="{{ current }}">
@@ -219,7 +228,8 @@ tr.has-detail.expanded td:first-child::before {
     <td style="white-space:nowrap;">
         {{ m['label'] }}{% if m['sublabel'] %}<span class="badge">{{ m['sublabel'] }}</span>{% endif %}
     </td>
-    <td>{{ m['tail'] }}</td>
+    <!-- CHANGE 2: clickable tail link to FlightAware, stopPropagation to prevent accordion from opening -->
+    <td>{% if m['tail'] %}<a href="https://www.flightaware.com/live/flight/{{ m['tail'] | replace('-', '') }}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;">{{ m['tail'] }}</a>{% endif %}</td>
     <td>{{ m['flight'] }}</td>
     <td>{{ m['block_id'] }}</td>
     <td>{{ m['msgno'] }}</td>
@@ -350,11 +360,15 @@ function addRow(m) {
         tr.setAttribute("data-detail", JSON.stringify(m.detail));
         tr.onclick = function() { toggleDetail(this); };
     }
+    // CHANGE 2 (JS): clickable tail link to FlightAware, stopPropagation to prevent accordion from opening
+    var tailHtml = m.tail
+        ? '<a href="https://www.flightaware.com/live/flight/' + m.tail.replace(/-/g,'') + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" style="color:inherit;text-decoration:none;">' + m.tail + '</a>'
+        : '';
     tr.innerHTML =
         "<td>" + (m.ts || "") + "</td>" +
         "<td>" + (m.freq || "") + "</td>" +
         "<td style='white-space:nowrap;'>" + (m.label || "") + (m.sublabel ? ' <span class="badge">' + m.sublabel + '</span>' : "") + "</td>" +
-        "<td>" + (m.tail || "") + "</td>" +
+        "<td>" + tailHtml + "</td>" +
         "<td>" + (m.flight || "") + "</td>" +
         "<td>" + (m.block_id || "") + "</td>" +
         "<td>" + (m.msgno || "") + "</td>" +
@@ -544,15 +558,24 @@ def api_new():
 def raw():
     day = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
     limit = min(int(request.args.get("limit", 1000)), 5000)
+
     conn = db_connect(day)
-    if not conn: return jsonify({"error": "No DB"}), 404
-    rows = conn.execute("SELECT * FROM messages ORDER BY ts DESC LIMIT ?", (limit,)).fetchall(); conn.close()
+    if not conn:
+        return jsonify({"error": "No DB"}), 404
+
+    rows = conn.execute(
+        "SELECT raw FROM messages ORDER BY ts DESC LIMIT ?",
+        (limit,)
+    ).fetchall()
+    conn.close()
+
     result = []
     for r in rows:
-        d = dict(r)
-        try: d["raw"] = json.loads(d["raw"])
-        except: pass
-        result.append(d)
+        try:
+            result.append(json.loads(r["raw"]))
+        except Exception:
+            continue
+
     return jsonify(result)
 
 if __name__ == "__main__":
