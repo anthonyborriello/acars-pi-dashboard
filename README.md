@@ -385,7 +385,7 @@ Only one instance of `acars_logger.py` can run at a time — acarsdec will fail 
 ## Changelog
 ### v1.4
 - fix: Improved the calendar UI for better readability and navigation.
-- fix: The raw link now returns the same ACARSDeco data as the main output.
+- fix: The raw link now returns the same acarsdec data as the main output.
 
 ### v1.3
 - feat: improved message formatting — optimized the detail panel to preserve the original structure of ACARS messages, ensuring that well-formatted data (like WDR and flight plans) remains perfectly aligned.
