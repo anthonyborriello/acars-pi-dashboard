@@ -285,6 +285,14 @@ function beep(freq, dur, type, freqEnd) {
 function toggleSQ() {
     sqVisible = !sqVisible;
     document.querySelectorAll("tr.sq").forEach(function(tr) {
+        // Se stiamo nascondendo, chiudi prima la fisarmonica
+        if (!sqVisible && tr.classList.contains("expanded")) {
+            var detailTr = tr.nextElementSibling;
+            if (detailTr && detailTr.classList.contains("detail-row")) {
+                detailTr.classList.remove("open");
+            }
+            tr.classList.remove("expanded");
+        }
         tr.classList.toggle("sq-show", sqVisible);
     });
     document.getElementById("sq-toggle").textContent = sqVisible ? "Hide" : "View";
