@@ -384,6 +384,7 @@ Only one instance of `acars_logger.py` can run at a time — acarsdec will fail 
 
 ## Changelog
 ### v1.4
+- feat: Tail number can be clicked to view the airplane position on a map.
 - fix: Improved the calendar UI for better readability and navigation.
 - fix: The raw link now returns the same acarsdec data.
 
