@@ -96,8 +96,8 @@ tr.sq.sq-show        { display:table-row; }
     background:#1a2a1a; border:1px solid #336633; color:#88cc88;
 }
 
-/* Adaptive BELL label */
-.bell-label {
+/* Control character labels (BELL, SOH, etc.) */
+.ctrl-label {
     font-size: 9px;
     text-transform: lowercase;
     color: currentColor;
@@ -170,17 +170,16 @@ input[type="date"] { appearance:none; -webkit-appearance:none; }
 <div id="status"></div>
 
 <div class="toolbar">
-    <!-- CHANGE 1: native date picker instead of dropdown -->
     <input type="date"
            id="day-picker"
            value="{{ current | replace('_', '-') }}"
            min="{{ days[-1] | replace('_', '-') }}"
            max="{{ days[0] | replace('_', '-') }}"
-           onchange="location.href='/?day='+this.value.replace(/-/g,'_')" onclick="try{this.showPicker();}catch(e){}"
+           onchange="location.href='/?day='+this.value.replace(/-/g,'_')"
+           onclick="try{this.showPicker();}catch(e){}"
            style="background:#111;color:#00ff99;border:1px solid #333;
                   padding:3px 7px;font-family:monospace;font-size:12px;
                   color-scheme:dark;cursor:pointer;">
-
 
     <form method="get" style="display:contents">
         <input type="hidden" name="day" value="{{ current }}">
@@ -228,8 +227,9 @@ input[type="date"] { appearance:none; -webkit-appearance:none; }
     <td style="white-space:nowrap;">
         {{ m['label'] }}{% if m['sublabel'] %}<span class="badge">{{ m['sublabel'] }}</span>{% endif %}
     </td>
-    <!-- CHANGE 2: clickable tail link to FlightAware, stopPropagation to prevent accordion from opening -->
-    <td>{% if m['tail'] %}<a href="https://www.flightaware.com/live/flight/{{ m['tail'] | replace('-', '') }}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;">{{ m['tail'] }}</a>{% endif %}</td>
+    <td>{% if m['tail'] %}<a href="https://www.flightaware.com/live/flight/{{ m['tail'] | replace('-', '') }}"
+        target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"
+        style="color:inherit;text-decoration:none;">{{ m['tail'] }}</a>{% endif %}</td>
     <td>{{ m['flight'] }}</td>
     <td>{{ m['block_id'] }}</td>
     <td>{{ m['msgno'] }}</td>
@@ -252,7 +252,10 @@ input[type="date"] { appearance:none; -webkit-appearance:none; }
 <script>
 var lastId     = {{ last_id }};
 var currentDay = "{{ current }}";
-var isToday    = (currentDay === new Date().toISOString().slice(0,10).replace(/-/g,"_"));
+var _now       = new Date();
+var _pad       = function(n) { return String(n).padStart(2, "0"); };
+var todayLocal = _now.getFullYear() + "_" + _pad(_now.getMonth()+1) + "_" + _pad(_now.getDate());
+var isToday    = (currentDay === todayLocal);
 var sqVisible  = false;
 var soundOn    = false;
 var audioCtx   = null;
@@ -285,7 +288,7 @@ function beep(freq, dur, type, freqEnd) {
 function toggleSQ() {
     sqVisible = !sqVisible;
     document.querySelectorAll("tr.sq").forEach(function(tr) {
-        // Se stiamo nascondendo, chiudi prima la fisarmonica
+        // Close accordion before hiding SQ rows
         if (!sqVisible && tr.classList.contains("expanded")) {
             var detailTr = tr.nextElementSibling;
             if (detailTr && detailTr.classList.contains("detail-row")) {
@@ -368,7 +371,6 @@ function addRow(m) {
         tr.setAttribute("data-detail", JSON.stringify(m.detail));
         tr.onclick = function() { toggleDetail(this); };
     }
-    // CHANGE 2 (JS): clickable tail link to FlightAware, stopPropagation to prevent accordion from opening
     var tailHtml = m.tail
         ? '<a href="https://www.flightaware.com/live/flight/' + m.tail.replace(/-/g,'') + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();" style="color:inherit;text-decoration:none;">' + m.tail + '</a>'
         : '';
@@ -426,22 +428,41 @@ if (isToday) setInterval(poll, 5000);
 </html>
 """
 
+# Fields excluded from the detail/accordion view (already shown in the table)
 EXCLUDED_FROM_DETAIL = {
     "freq", "label", "tail", "flight", "assstat", "text", "error",
     "block_id", "msgno", "ack", "channel", "timestamp",
     "station_id", "app", "sublabel"
 }
 
+# Control characters to replace with a visible label in the message text
+CTRL_CHARS = {
+    "\x01": "soh",   # SOH — Start of Heading
+    "\x07": "bell",  # BEL — Bell
+}
+
+
 def get_available_days():
+    """Return list of available log days (newest first) based on DB filenames."""
     files = sorted(glob.glob(os.path.join(LOGS_DIR, "acars_*.db")), reverse=True)
     return [os.path.basename(f).replace("acars_", "").replace(".db", "") for f in files]
 
+
+def replace_ctrl_chars(text: str) -> str:
+    """Replace known control characters with styled HTML labels."""
+    for char, name in CTRL_CHARS.items():
+        text = text.replace(char, f'<span class="ctrl-label">{name}</span>')
+    return text
+
+
 def enrich(m):
+    """Enrich a raw DB row dict with display fields for the dashboard."""
     label   = m.get("label", "")
     assstat = m.get("assstat", "")
     error   = m.get("error", 0)
     m.update(sublabel="", lat=None, lon=None, alt=None, extra="", block_id="", msgno="", detail=None)
 
+    # Parse raw JSON blob
     try:
         raw = m.get("raw", "{}")
         raw = json.loads(raw) if isinstance(raw, str) else raw
@@ -450,141 +471,209 @@ def enrich(m):
 
     m["block_id"] = raw.get("block_id", "")
     m["msgno"]    = raw.get("msgno", "")
+
+    # H1 sublabel
     if label == "H1":
         m["sublabel"] = raw.get("sublabel", "")
 
-    # Handle the text and replace BELL character with styled span
+    # Build display text — replace control characters with styled HTML labels
     try:
         raw_text = raw.get("text")
         if not isinstance(raw_text, str):
             raw_text = m.get("text", "")
-
-        if isinstance(raw_text, str):
-            # Replace BELL control char with adaptive styled label
-            m["text_original"] = raw_text.replace('\x07', '<span class="bell-label">bell</span>')
-        else:
-            m["text_original"] = ""
+        m["text_original"] = replace_ctrl_chars(raw_text) if isinstance(raw_text, str) else ""
     except Exception:
         m["text_original"] = ""
 
-    # ADS-C Decoding
+    # ADS-C position and telemetry decoding
     try:
         for tag in raw.get("libacars", {}).get("arinc622", {}).get("adsc", {}).get("tags", []):
             report = tag.get("basic_report")
             if report and "lat" in report:
-                m["lat"], m["lon"] = round(float(report["lat"]), 5), round(float(report["lon"]), 5)
+                m["lat"] = round(float(report["lat"]), 5)
+                m["lon"] = round(float(report["lon"]), 5)
                 m["alt"] = report.get("alt")
             if "earth_ref_data" in tag:
-                erd = tag["earth_ref_data"]
-                gs, trk, vspd = erd.get("gnd_spd_kts"), erd.get("true_trk_deg"), erd.get("vspd_ftmin")
+                erd  = tag["earth_ref_data"]
+                gs   = erd.get("gnd_spd_kts")
+                trk  = erd.get("true_trk_deg")
+                vspd = erd.get("vspd_ftmin")
                 if gs is not None:
-                    res = f"{int(gs)} {int(trk)}"
+                    extra = f"{int(gs)} {int(trk)}"
                     if vspd is not None:
-                        res += f" {int(vspd)}ft/min" if abs(vspd) > 150 else " 0"
-                    m["extra"] = res
+                        extra += f" {int(vspd)}ft/min" if abs(vspd) > 150 else " 0"
+                    m["extra"] = extra
                 break
-    except Exception: pass
+    except Exception:
+        pass
 
-    # Prepare detailed view
+    # Build accordion detail payload
     try:
         detail = {}
-        if m.get("text_original"): detail["text"] = {"text": m["text_original"]}
-        if "libacars" in raw: detail["libacars"] = raw["libacars"]
-
-        metadata = {k: v for k, v in raw.items() if k not in EXCLUDED_FROM_DETAIL and k not in ("level", "noise", "libacars")}
-        if metadata: detail["metadata"] = metadata
-
+        if m.get("text_original"):
+            detail["text"] = {"text": m["text_original"]}
+        if "libacars" in raw:
+            detail["libacars"] = raw["libacars"]
+        metadata = {
+            k: v for k, v in raw.items()
+            if k not in EXCLUDED_FROM_DETAIL and k not in ("level", "noise", "libacars")
+        }
+        if metadata:
+            detail["metadata"] = metadata
         signal = {k: raw[k] for k in ("level", "noise") if k in raw}
-        if signal: detail["signal"] = signal
+        if signal:
+            detail["signal"] = signal
         m["detail"] = detail if detail else None
-    except Exception: pass
+    except Exception:
+        pass
 
-    if label == "SQ": m["cls"] = "sq err" if error else "sq"
-    elif m["lat"] is not None: m["cls"] = "ads"
-    elif assstat == "complete": m["cls"] = "complete"
-    elif error: m["cls"] = "err"
-    else: m["cls"] = "other"
+    # Row CSS class
+    if label == "SQ":
+        m["cls"] = "sq err" if error else "sq"
+    elif m["lat"] is not None:
+        m["cls"] = "ads"
+    elif assstat == "complete":
+        m["cls"] = "complete"
+    elif error:
+        m["cls"] = "err"
+    else:
+        m["cls"] = "other"
 
-    m["status"] = {"in progress": "[...]", "out of sequence": "[OOS]", "complete": "[FULL]"}.get(assstat, "")
+    # Human-readable assstat label
+    m["status"] = {
+        "in progress":    "[...]",
+        "out of sequence": "[OOS]",
+        "complete":       "[FULL]",
+    }.get(assstat, "")
+
     return m
 
+
 def db_connect(day):
+    """Open a read-only SQLite connection for the given day, or None if missing."""
     path = os.path.join(LOGS_DIR, f"acars_{day}.db")
-    if not os.path.exists(path): return None
-    conn = sqlite3.connect(path); conn.row_factory = sqlite3.Row
+    if not os.path.exists(path):
+        return None
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
     return conn
 
+
 def get_messages(day, tail="", flight="", label="", assstat=""):
+    """Fetch and enrich messages for the given day with optional filters."""
     conn = db_connect(day)
-    if not conn: return [], 0
-    q, p = "SELECT * FROM messages WHERE 1=1", []
-    if tail:   q += " AND tail LIKE ?";   p.append(f"%{tail}%")
-    if flight: q += " AND flight LIKE ?"; p.append(f"%{flight}%")
-    if label:  q += " AND label = ?";     p.append(label)
-    if assstat: q += " AND assstat = ?";   p.append(assstat)
-    q += " ORDER BY ts DESC"
-    rows = conn.execute(q, p).fetchall()
-    last = conn.execute("SELECT MAX(id) FROM messages").fetchone()[0] or 0
+    if not conn:
+        return [], 0
+    query  = "SELECT * FROM messages WHERE 1=1"
+    params = []
+    if tail:    query += " AND tail LIKE ?";    params.append(f"%{tail}%")
+    if flight:  query += " AND flight LIKE ?";  params.append(f"%{flight}%")
+    if label:   query += " AND label = ?";      params.append(label)
+    if assstat: query += " AND assstat = ?";    params.append(assstat)
+    query += " ORDER BY ts DESC"
+    rows    = conn.execute(query, params).fetchall()
+    last_id = conn.execute("SELECT MAX(id) FROM messages").fetchone()[0] or 0
     conn.close()
-    return [enrich(dict(r)) for r in rows], last
+    return [enrich(dict(r)) for r in rows], last_id
+
 
 def get_stats(conn):
-    total = conn.execute("SELECT COUNT(*) FROM messages WHERE label != 'SQ'").fetchone()[0]
+    """Return (total, aircraft, sq_count) for the open connection."""
+    total    = conn.execute("SELECT COUNT(*)       FROM messages WHERE label != 'SQ'").fetchone()[0]
     aircraft = conn.execute("SELECT COUNT(DISTINCT tail) FROM messages WHERE label != 'SQ' AND tail != ''").fetchone()[0]
-    sq = conn.execute("SELECT COUNT(*) FROM messages WHERE label = 'SQ'").fetchone()[0]
+    sq       = conn.execute("SELECT COUNT(*)       FROM messages WHERE label = 'SQ'").fetchone()[0]
     return total, aircraft, sq
 
+
 def get_labels(day):
+    """Return sorted list of distinct labels for the given day."""
     conn = db_connect(day)
-    if not conn: return []
+    if not conn:
+        return []
     rows = conn.execute("SELECT DISTINCT label FROM messages ORDER BY label").fetchall()
     conn.close()
     return [r[0] for r in rows]
 
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
 @app.route("/")
 def index():
     days = get_available_days()
-    day = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
-    msgs, last_id = get_messages(day, request.args.get("tail", ""), request.args.get("flight", ""), request.args.get("label", ""), request.args.get("assstat", ""))
+    day  = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
+    msgs, last_id = get_messages(
+        day,
+        request.args.get("tail", ""),
+        request.args.get("flight", ""),
+        request.args.get("label", ""),
+        request.args.get("assstat", ""),
+    )
     conn = db_connect(day)
     total, aircraft, sq_count = get_stats(conn) if conn else (0, 0, 0)
-    if conn: conn.close()
-    return render_template_string(HTML, messages=msgs, days=days, current=day, total=total, aircraft=aircraft, sq_count=sq_count, labels=get_labels(day), last_id=last_id, filter_tail=request.args.get("tail", ""), filter_flight=request.args.get("flight", ""), filter_label=request.args.get("label", ""), filter_assstat=request.args.get("assstat", ""))
+    if conn:
+        conn.close()
+    return render_template_string(
+        HTML,
+        messages=msgs,
+        days=days,
+        current=day,
+        total=total,
+        aircraft=aircraft,
+        sq_count=sq_count,
+        labels=get_labels(day),
+        last_id=last_id,
+        filter_tail=request.args.get("tail", ""),
+        filter_flight=request.args.get("flight", ""),
+        filter_label=request.args.get("label", ""),
+        filter_assstat=request.args.get("assstat", ""),
+    )
+
 
 @app.route("/api/new")
 def api_new():
-    day = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
+    """Polling endpoint — returns messages newer than last_id."""
+    day  = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
     conn = db_connect(day)
-    if not conn: return jsonify({"messages": [], "last_id": 0, "total": 0, "aircraft": 0, "sq": 0})
+    if not conn:
+        return jsonify({"messages": [], "last_id": 0, "total": 0, "aircraft": 0, "sq": 0})
     last_id = int(request.args.get("last_id", 0))
-    rows = conn.execute("SELECT * FROM messages WHERE id > ? ORDER BY id ASC", (last_id,)).fetchall()
-    new_last = conn.execute("SELECT MAX(id) FROM messages").fetchone()[0] or last_id
-    total, aircraft, sq = get_stats(conn); conn.close()
-    return jsonify({"messages": [enrich(dict(r)) for r in rows], "last_id": new_last, "total": total, "aircraft": aircraft, "sq": sq})
+    rows    = conn.execute(
+        "SELECT * FROM messages WHERE id > ? ORDER BY id ASC", (last_id,)
+    ).fetchall()
+    new_last         = conn.execute("SELECT MAX(id) FROM messages").fetchone()[0] or last_id
+    total, aircraft, sq = get_stats(conn)
+    conn.close()
+    return jsonify({
+        "messages": [enrich(dict(r)) for r in rows],
+        "last_id":  new_last,
+        "total":    total,
+        "aircraft": aircraft,
+        "sq":       sq,
+    })
+
 
 @app.route("/raw")
 def raw():
-    day = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
+    """Return raw JSON blobs for the given day (default limit 1000, max 5000)."""
+    day   = request.args.get("day", datetime.now().strftime("%Y_%m_%d"))
     limit = min(int(request.args.get("limit", 1000)), 5000)
-
-    conn = db_connect(day)
+    conn  = db_connect(day)
     if not conn:
-        return jsonify({"error": "No DB"}), 404
-
+        return jsonify({"error": "No DB for requested day"}), 404
     rows = conn.execute(
-        "SELECT raw FROM messages ORDER BY ts DESC LIMIT ?",
-        (limit,)
+        "SELECT raw FROM messages ORDER BY ts DESC LIMIT ?", (limit,)
     ).fetchall()
     conn.close()
-
     result = []
     for r in rows:
         try:
             result.append(json.loads(r["raw"]))
         except Exception:
             continue
-
     return jsonify(result)
 
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5050)
