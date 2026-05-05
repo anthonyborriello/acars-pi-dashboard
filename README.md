@@ -40,7 +40,7 @@ Tested on **Raspberry Pi 2B** with **Debian Trixie**, but runs on any modern Lin
 - **Color-coded rows** — ADS-C telemetry in blue, complete messages in white, errors in red, SQ squitter dimmed
 - **Expandable detail panel** — click any row to reveal full decoded data: signal level, noise floor, and all raw fields not shown in the main table
 - **ADS-C telemetry extraction** — latitude, longitude, altitude, ground speed, track, vertical speed decoded from ARINC-622 / libacars data
-- **Per-day SQLite databases** — automatic UTC midnight rotation, historical day browsing via dropdown
+- **Per-day SQLite databases** — automatic local time midnight rotation, historical day browsing via calendar
 - **Filtering** — filter by tail number, flight number, label type, and message status
 - **SQ squitter toggle** — show/hide squitter messages on demand
 - **Audio alerts** — optional sound notifications for new messages and squitter (Web Audio API, no dependencies)
