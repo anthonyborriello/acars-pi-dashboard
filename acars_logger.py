@@ -47,7 +47,7 @@ def init_db(db_path):
     return conn
 
 def get_db():
-    today   = datetime.now(timezone.utc).strftime("%Y_%m_%d")
+    today   = datetime.now().strftime("%Y_%m_%d")   # data locale per nome file
     db_path = os.path.join(LOGS_DIR, f"acars_{today}.db")
     return init_db(db_path), today
 
@@ -92,8 +92,8 @@ def main():
                 continue
             try:
                 j = json.loads(line)
-                today_utc = datetime.now(timezone.utc).strftime("%Y_%m_%d")
-                if today_utc != current_day:
+                today_local = datetime.now().strftime("%Y_%m_%d")  # rotazione su ora locale
+                if today_local != current_day:
                     conn.close()
                     conn, current_day = get_db()
                     print(f"[{datetime.now(timezone.utc)} UTC] Day rotated → acars_{current_day}.db")
