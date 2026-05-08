@@ -99,7 +99,7 @@ git clone https://github.com/f00b4r0/acarsdec.git
 cd acarsdec && mkdir build && cd build
 cmake .. -DCMAKE_C_FLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4"
 make && sudo make install
-cd ../..
+cd
 ```
 
 | Model | Flag |
@@ -122,7 +122,6 @@ acarsdec --help
 ```bash
 git clone https://github.com/anthonyborriello/acars-pi-dashboard.git
 cd acars-pi-dashboard
-sudo apt install python3-flask
 ```
 
 ---
