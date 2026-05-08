@@ -71,6 +71,7 @@ Any RTL-SDR compatible dongle will work. For best results use a VHF antenna tune
 
 ```bash
 sudo apt install python3-flask
+sudo apt onstall rtl-sdr
 ```
 
 ### libacars 
