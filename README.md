@@ -99,6 +99,7 @@ git clone https://github.com/f00b4r0/acarsdec.git
 cd acarsdec && mkdir build && cd build
 cmake .. -DCMAKE_C_FLAGS="-mcpu=cortex-a7 -mfpu=neon-vfpv4"
 make && sudo make install
+cd ../..
 ```
 
 | Model | Flag |
