@@ -347,7 +347,7 @@ Key decisions:
 - **Single poll endpoint** — `/api/new` returns both new messages and updated stats in one HTTP call, halving network overhead vs. a separate `/api/stats`
 - **Server-side enrichment** — CSS classes, status strings, and telemetry are computed once in Python (`enrich()`), never duplicated in JavaScript
 - **No build step** — pure HTML/CSS/JS served inline via Flask's `render_template_string`; no npm, no webpack, no transpilation
-- **UTC timestamps everywhere** — databases rotate at UTC midnight; timestamps stored and displayed in UTC
+- **UTC timestamps everywhere** — databases rotate at local midnight; timestamps stored and displayed in UTC
 
 ---
 
