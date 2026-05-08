@@ -70,9 +70,7 @@ Any RTL-SDR compatible dongle will work. For best results use a VHF antenna tune
 ### System dependencies
 
 ```bash
-sudo apt install git
-sudo apt install python3-flask
-sudo apt onstall rtl-sdr
+sudo apt install -y git python3-flask rtl-sdr
 ```
 
 ### libacars 
@@ -80,7 +78,7 @@ sudo apt onstall rtl-sdr
 libacars enables full ADS-C and CPDLC decoding. Install it **before** compiling acarsdec.
 
 ```bash
-sudo apt install cmake build-essential pkg-config
+sudo apt install -y cmake build-essential pkg-config zlib1g-dev libxml2-dev libjansson-dev
 git clone https://github.com/szpajder/libacars.git
 cd libacars && mkdir build && cd build
 cmake .. && make && sudo make install && sudo ldconfig
