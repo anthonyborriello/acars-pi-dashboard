@@ -84,7 +84,7 @@ sudo apt install cmake build-essential pkg-config
 git clone https://github.com/szpajder/libacars.git
 cd libacars && mkdir build && cd build
 cmake .. && make && sudo make install && sudo ldconfig
-cd ../..
+cd
 ```
 
 ### acarsdec (f00b4r0 fork)
